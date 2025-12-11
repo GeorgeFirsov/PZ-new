@@ -5,54 +5,71 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   build-app:
+    name: build
     runs-on: ubuntu-latest
     timeout-minutes: 1440
-    container:
-      image: maven:3.9.10-eclipse-temurin-21
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Make mvnw executable
-        run: chmod +x ./mvnw
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
 
-      - name: Build with Maven Wrapper
-        run: ./mvnw -B clean package
+      - name: Build with Maven
+        run: |
+          chmod +x ./mvnw
+          ./mvnw -B clean package
 
-      - name: Upload JAR artifacts
+      - name: Upload built JAR
         uses: actions/upload-artifact@v4
         with:
           name: vuln
           path: ./target/*.jar
 
   sast:
+    name: SAST - Semgrep
     runs-on: ubuntu-latest
     timeout-minutes: 1440
     needs: build-app
-    container:
-      image: returntocorp/semgrep:latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run SAST (Semgrep)
-        run: |
-          semgrep --config auto --json > gl-sast-report.json || true
+      # === from SAST file ===
+      - name: Install Semgrep
+        run: pip install semgrep
 
-      - name: Upload SAST report
+      - name: Run Semgrep scan (SAST)
+        run: semgrep scan --config auto --sarif --output=semgrep.sarif .
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif
+
+      - name: Save SARIF as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gl-sast-report
-          path: gl-sast-report.json
+          name: semgrep-scan-results
+          path: semgrep.sarif
 
   sca:
+    name: SCA - OWASP Dependency Check
     runs-on: ubuntu-latest
     timeout-minutes: 1440
     needs: sast
+
     container:
       image: maven:3.9.10-eclipse-temurin-21
 
@@ -63,79 +80,114 @@ jobs:
       - name: Make mvnw executable
         run: chmod +x ./mvnw
 
-      - name: Run SCA (OWASP Dependency-Check)
+      - name: Run Maven verify with OWASP Dependency-Check
         run: ./mvnw -B verify
 
-      - name: Upload SCA report
+      - name: Upload HTML report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
-          path: ./target/dependency-check-report.html
+          path: target/dependency-check-report.html
 
   dast-baseline:
+    name: DAST - ZAP Baseline
     runs-on: ubuntu-latest
     timeout-minutes: 1440
     needs:
       - sca
       - build-app
-    container:
-      image: zaproxy/zap-stable
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download built JAR
+      - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
           name: vuln
           path: ./target
 
+      - name: Create ZAP rules file
+        run: touch zap-rules.tsv
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Run application
         run: |
-          java -jar ./target/*.jar &
+          java -jar target/*.jar &
           sleep 30
 
-      - name: Run ZAP Baseline Scan
-        run: |
-          zap-baseline.py -t http://localhost:8080 > zap-baseline-report.txt || true
+      - name: Make workspace writable for ZAP
+        run: chmod -R 777 "$GITHUB_WORKSPACE"
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.9.0
+        continue-on-error: true
+        with:
+          target: "http://localhost:8080"
+          rules_file_name: "zap-rules.tsv"
+          cmd_options: "-r zap-baseline-report.html"
+          allow_issue_writing: false
 
       - name: Upload ZAP Baseline report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-baseline-report
-          path: zap-baseline-report.txt
+          path: zap-baseline-report.html
 
   dast-api:
+    name: DAST - ZAP API Scan
     runs-on: ubuntu-latest
     timeout-minutes: 1440
     needs:
       - sca
       - build-app
-    container:
-      image: zaproxy/zap-stable
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download built JAR
+      - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
           name: vuln
           path: ./target
 
+      - name: Create ZAP rules file
+        run: touch zap-rules.tsv
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Run application
         run: |
-          java -jar ./target/*.jar &
+          java -jar target/*.jar &
           sleep 30
 
-      - name: Run ZAP API Scan
-        run: |
-          zap-api-scan.py -t http://localhost:8080/v3/api-docs -f openapi > zap-api-report.txt || true
+      - name: Make workspace writable for ZAP
+        run: chmod -R 777 "$GITHUB_WORKSPACE"
+
+      - name: ZAP API Scan
+        uses: zaproxy/action-api-scan@v0.10.0
+        continue-on-error: true
+        with:
+          target: "http://localhost:8080/v3/api-docs"
+          rules_file_name: "zap-rules.tsv"
+          cmd_options: "-f openapi -r zap-api-report.html"
+          allow_issue_writing: false
 
       - name: Upload ZAP API report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-api-report
-          path: zap-api-report.txt
+          path: zap-api-report.html
