@@ -1,21 +1,15 @@
 package ru.mtuci.coursemanagement.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import ru.mtuci.coursemanagement.model.Student;
 import ru.mtuci.coursemanagement.repository.StudentRepository;
+import ru.mtuci.coursemanagement.security.CsrfTokenUtil;
 
 import java.util.List;
 
@@ -23,17 +17,30 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class StudentController {
+
     private final StudentRepository repo;
 
     @GetMapping("/students")
-    public String studentsPage(Model model) {
+    public String studentsPage(Model model, HttpServletRequest req) {
         model.addAttribute("students", repo.findAll());
         model.addAttribute("student", new Student());
+
+        HttpSession session = req.getSession(true);
+        String csrf = CsrfTokenUtil.getOrCreateToken(session);
+        model.addAttribute("_csrf", csrf);
+
         return "students";
     }
 
     @PostMapping("/students")
-    public String createStudent(@ModelAttribute Student st) {
+    public String createStudent(@ModelAttribute Student st,
+                                @RequestParam("_csrf") String csrfToken,
+                                HttpServletRequest req) {
+        HttpSession session = req.getSession(false);
+        if (!CsrfTokenUtil.isTokenValid(session, csrfToken)) {
+            return "redirect:/students";
+        }
+
         repo.save(st);
         return "redirect:/students";
     }
@@ -46,13 +53,16 @@ public class StudentController {
 
     @GetMapping("/api/students/{id}")
     @ResponseBody
-    public ResponseEntity<Student> one(@PathVariable Long id, HttpSession s) {
-        return repo.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Student> one(@PathVariable Long id) {
+        return repo.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/api/students/{id}")
     @ResponseBody
-    public ResponseEntity<Student> update(@PathVariable Long id, @RequestBody Student payload) {
+    public ResponseEntity<Student> update(@PathVariable Long id,
+                                          @RequestBody Student payload) {
         return repo.findById(id).map(st -> {
             st.setName(payload.getName());
             st.setEmail(payload.getEmail());

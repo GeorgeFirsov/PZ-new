@@ -1,5 +1,6 @@
 package ru.mtuci.coursemanagement.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
 import ru.mtuci.coursemanagement.model.Course;
 import ru.mtuci.coursemanagement.repository.CourseRepository;
+import ru.mtuci.coursemanagement.security.CsrfTokenUtil;
 import ru.mtuci.coursemanagement.service.CourseService;
 
 import java.util.List;
@@ -30,14 +32,21 @@ public class CourseController {
     private final CourseService service;
 
     @GetMapping("/courses")
-    public String coursesPage(Model model) {
+    public String coursesPage(Model model, HttpServletRequest req) {
         model.addAttribute("courses", repo.findAll());
         model.addAttribute("course", new Course());
+        String csrf = CsrfTokenUtil.getOrCreateToken(req.getSession(true));
+        model.addAttribute("_csrf", csrf);
         return "courses";
     }
 
     @PostMapping("/courses")
-    public String createCourse(@ModelAttribute Course c) {
+    public String createCourse(@ModelAttribute Course c,
+                               @RequestParam("_csrf") String csrfToken,
+                               HttpServletRequest req) {
+        if (!CsrfTokenUtil.isTokenValid(req.getSession(false), csrfToken)) {
+            return "redirect:/courses";
+        }
         repo.save(c);
         return "redirect:/courses";
     }

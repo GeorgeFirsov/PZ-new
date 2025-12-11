@@ -1,4 +1,4 @@
-name: DAST_CI
+name: SAST,SCA,DAST_CI
 
 on:
   pull_request:
@@ -8,9 +8,9 @@ on:
 jobs:
   build-app:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 1440
     container:
-      image: maven:3.9.10-eclipse-temurin-17
+      image: maven:3.9.10-eclipse-temurin-21
 
     steps:
       - name: Checkout repository
@@ -28,96 +28,114 @@ jobs:
           name: vuln
           path: ./target/*.jar
 
-  zap-baseline:
+  sast:
     runs-on: ubuntu-latest
+    timeout-minutes: 1440
     needs: build-app
+    container:
+      image: returntocorp/semgrep:latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download JAR artifact
+      - name: Run SAST (Semgrep)
+        run: |
+          semgrep --config auto --json > gl-sast-report.json || true
+
+      - name: Upload SAST report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gl-sast-report
+          path: gl-sast-report.json
+
+  sca:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1440
+    needs: sast
+    container:
+      image: maven:3.9.10-eclipse-temurin-21
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make mvnw executable
+        run: chmod +x ./mvnw
+
+      - name: Run SCA (OWASP Dependency-Check)
+        run: ./mvnw -B verify
+
+      - name: Upload SCA report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: ./target/dependency-check-report.html
+
+  dast-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1440
+    needs:
+      - sca
+      - build-app
+    container:
+      image: zaproxy/zap-stable
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download built JAR
         uses: actions/download-artifact@v4
         with:
           name: vuln
           path: ./target
 
-      - name: Create ZAP rules file
-        run: touch zap-rules.tsv
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
       - name: Run application
         run: |
-          java -jar target/*.jar &
+          java -jar ./target/*.jar &
           sleep 30
 
-      - name: Make workspace writable for ZAP
-        run: chmod -R 777 "$GITHUB_WORKSPACE"
-
-      - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.9.0
-        continue-on-error: true
-        with:
-          target: "http://localhost:8080"
-          rules_file_name: "zap-rules.tsv"
-          cmd_options: "-r zap-baseline-report.html"
-          allow_issue_writing: false
+      - name: Run ZAP Baseline Scan
+        run: |
+          zap-baseline.py -t http://localhost:8080 > zap-baseline-report.txt || true
 
       - name: Upload ZAP Baseline report
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-baseline-report
-          path: zap-baseline-report.html
+          path: zap-baseline-report.txt
 
-  zap-api:
+  dast-api:
     runs-on: ubuntu-latest
-    needs: build-app
+    timeout-minutes: 1440
+    needs:
+      - sca
+      - build-app
+    container:
+      image: zaproxy/zap-stable
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download JAR artifact
+      - name: Download built JAR
         uses: actions/download-artifact@v4
         with:
           name: vuln
           path: ./target
 
-      - name: Create ZAP rules file
-        run: touch zap-rules.tsv
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
       - name: Run application
         run: |
-          java -jar target/*.jar &
+          java -jar ./target/*.jar &
           sleep 30
 
-      - name: Make workspace writable for ZAP
-        run: chmod -R 777 "$GITHUB_WORKSPACE"
-
-      - name: ZAP API Scan
-        uses: zaproxy/action-api-scan@v0.10.0
-        continue-on-error: true
-        with:
-          target: "http://localhost:8080/v3/api-docs"
-          rules_file_name: "zap-rules.tsv"
-          cmd_options: "-f openapi -r zap-api-report.html"
-          allow_issue_writing: false
+      - name: Run ZAP API Scan
+        run: |
+          zap-api-scan.py -t http://localhost:8080/v3/api-docs -f openapi > zap-api-report.txt || true
 
       - name: Upload ZAP API report
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-api-report
-          path: zap-api-report.html
+          path: zap-api-report.txt
