@@ -1,6 +1,8 @@
 package ru.mtuci.coursemanagement.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import ru.mtuci.coursemanagement.model.Course;
 import ru.mtuci.coursemanagement.repository.CourseRepository;
@@ -11,6 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CourseService {
     private final CourseRepository repo;
+    private final JdbcTemplate jdbc;
 
     public List<Course> findAll() {
         return repo.findAll();
@@ -27,11 +30,16 @@ public class CourseService {
     public void delete(Long id) {
         repo.deleteById(id);
     }
-//убираем sql инъецию
+
     public List<Course> searchByTitle(String title) {
-        if (title == null || title.isBlank()) {
-            return repo.findAll();
-        }
-        return repo.findByTitleContainingIgnoreCase(title);
+        String sql = "SELECT id, title, description, teacher_id FROM courses WHERE title = '" + title + "'";
+        RowMapper<Course> rm = (rs, i) -> new Course(
+                rs.getLong("id"),
+                rs.getString("title"),
+                rs.getString("description"),
+                rs.getLong("teacher_id")
+        );
+        return jdbc.query(sql, rm);
+
     }
 }
