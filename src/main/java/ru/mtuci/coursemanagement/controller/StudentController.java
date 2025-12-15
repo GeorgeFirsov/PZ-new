@@ -2,51 +2,84 @@ package ru.mtuci.coursemanagement.controller;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import ru.mtuci.coursemanagement.service.StudentService;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import ru.mtuci.coursemanagement.model.Student;
+import ru.mtuci.coursemanagement.repository.StudentRepository;
 import ru.mtuci.coursemanagement.util.CsrfUtil;
 
+import java.util.List;
+
 @Controller
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
-@RequestMapping("/students")
 public class StudentController {
+    private final StudentRepository repo;
 
-    private final StudentService studentService;
-
-    @GetMapping
-    public String list(Model model, HttpSession session) {
-        model.addAttribute("students", studentService.findAll());
+    @GetMapping("/students")
+    public String studentsPage(Model model, HttpSession session) {
+        model.addAttribute("students", repo.findAll());
+        model.addAttribute("student", new Student());
         model.addAttribute("csrf", CsrfUtil.getToken(session));
         return "students";
     }
 
-    @PostMapping("/add")
-    public String add(
-            @RequestParam String name,
-            @RequestParam String csrf,
-            HttpSession session
-    ) {
+    @PostMapping("/students")
+    public String createStudent(@ModelAttribute Student st,
+                                @RequestParam String csrf,
+                                HttpSession session,
+                                Model model) {
+
         if (!CsrfUtil.check(session, csrf)) {
-            return "error";
+            model.addAttribute("error", "CSRF токен неверный");
+            model.addAttribute("students", repo.findAll());
+            model.addAttribute("student", new Student());
+            model.addAttribute("csrf", CsrfUtil.getToken(session));
+            return "students";
         }
 
-        studentService.add(name);
+        repo.save(st);
         return "redirect:/students";
     }
 
-    @PostMapping("/delete")
-    public String delete(
-            @RequestParam Long id,
-            @RequestParam String csrf,
-            HttpSession session
-    ) {
-        if (!CsrfUtil.check(session, csrf)) {
-            return "error";
-        }
+    @GetMapping("/api/students")
+    @ResponseBody
+    public List<Student> all() {
+        return repo.findAll();
+    }
 
-        studentService.delete(id);
-        return "redirect:/students";
+    @GetMapping("/api/students/{id}")
+    @ResponseBody
+    public ResponseEntity<Student> one(@PathVariable Long id, HttpSession s) {
+        return repo.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/api/students/{id}")
+    @ResponseBody
+    public ResponseEntity<Student> update(@PathVariable Long id, @RequestBody Student payload) {
+        return repo.findById(id).map(st -> {
+            st.setName(payload.getName());
+            st.setEmail(payload.getEmail());
+            st.setUserId(payload.getUserId());
+            return ResponseEntity.ok(repo.save(st));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/api/students/{id}")
+    @ResponseBody
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        repo.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

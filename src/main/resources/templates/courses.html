@@ -1,19 +1,13 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8"/>
-    <title>Курсы</title>
-</head>
+<head><meta charset="UTF-8"/><title>Курсы</title></head>
 <body>
 <h3>Курсы</h3>
 
+<p th:if="${error}" th:text="${error}"></p>
+
 <table border="1">
-    <tr>
-        <th>ID</th>
-        <th>Название</th>
-        <th>Описание</th>
-        <th>TeacherId</th>
-    </tr>
+    <tr><th>ID</th><th>Название</th><th>Описание</th><th>TeacherId</th></tr>
     <tr th:each="c: ${courses}">
         <td th:text="${c.id}"></td>
         <td th:text="${c.title}"></td>
@@ -26,7 +20,7 @@
 
 <h4>Добавить курс</h4>
 <form method="post" action="/courses">
-    <input type="hidden" name="csrf" value="${csrf}"/>
+    <input type="hidden" name="csrf" th:value="${csrf}"/>
 
     <input name="title" placeholder="Название"/>
     <input name="description" placeholder="Описание"/>

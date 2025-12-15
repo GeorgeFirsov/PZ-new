@@ -1,23 +1,14 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8"/>
-    <title>Вход</title>
-</head>
+<head><meta charset="UTF-8"/><title>Вход</title></head>
 <body>
 <h3>Вход</h3>
 
 <form method="post" action="/login">
-    <input type="hidden" name="csrf" value="${csrf}"/>
+    <input type="hidden" name="csrf" th:value="${csrf}"/>
 
-    <label>Логин:
-        <input type="text" name="username"/>
-    </label><br/>
-
-    <label>Пароль:
-        <input type="password" name="password"/>
-    </label><br/>
-
+    <label>Логин: <input type="text" name="username"/></label><br/>
+    <label>Пароль: <input type="password" name="password"/></label><br/>
     <button type="submit">Войти</button>
 </form>
 
@@ -27,7 +18,7 @@
 
 <h4>Регистрация (демо A04: можно указать роль)</h4>
 <form method="post" action="/register">
-    <input type="hidden" name="csrf" value="${csrf}"/>
+    <input type="hidden" name="csrf" th:value="${csrf}"/>
 
     <input name="username" placeholder="username"/>
     <input name="password" placeholder="password"/>
