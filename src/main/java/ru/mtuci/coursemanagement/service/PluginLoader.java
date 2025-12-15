@@ -1,33 +1,12 @@
-package ru.mtuci.coursemanagement.plugin;
+package ru.mtuci.coursemanagement.service;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Slf4j
+@Component
 public class PluginLoader {
-
-    public interface Plugin {
-        String execute();
-    }
-
-    public static class HelloPlugin implements Plugin {
-        public String execute() {
-            return "Hello from plugin";
-        }
-    }
-
-    public static class InfoPlugin implements Plugin {
-        public String execute() {
-            return "Plugin system is safe now";
-        }
-    }
-
-    public Plugin load(String pluginName) {
-
-        if ("hello".equals(pluginName)) {
-            return new HelloPlugin();
-        }
-
-        if ("info".equals(pluginName)) {
-            return new InfoPlugin();
-        }
-
-        throw new IllegalArgumentException("Plugin is not allowed");
+    public void tryLoad() {
+        log.info("Plugin loading is disabled");
     }
 }
