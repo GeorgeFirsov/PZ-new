@@ -1,84 +1,53 @@
 package ru.mtuci.coursemanagement.controller;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.client.RestTemplate;
-import ru.mtuci.coursemanagement.model.Course;
-import ru.mtuci.coursemanagement.repository.CourseRepository;
+import org.springframework.web.bind.annotation.*;
 import ru.mtuci.coursemanagement.service.CourseService;
+import ru.mtuci.coursemanagement.util.CsrfUtil;
 
-import java.util.List;
-
-@Slf4j
 @Controller
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
+@RequestMapping("/courses")
 public class CourseController {
-    private final CourseRepository repo;
-    private final CourseService service;
 
-    @GetMapping("/courses")
-    public String coursesPage(Model model) {
-        model.addAttribute("courses", repo.findAll());
-        model.addAttribute("course", new Course());
+    private final CourseService courseService;
+
+    @GetMapping
+    public String list(Model model, HttpSession session) {
+        model.addAttribute("courses", courseService.findAll());
+        model.addAttribute("csrf", CsrfUtil.getToken(session));
         return "courses";
     }
 
-    @PostMapping("/courses")
-    public String createCourse(@ModelAttribute Course c) {
-        repo.save(c);
+    @PostMapping("/add")
+    public String add(
+            @RequestParam String title,
+            @RequestParam String description,
+            @RequestParam String csrf,
+            HttpSession session
+    ) {
+        if (!CsrfUtil.check(session, csrf)) {
+            return "error";
+        }
+
+        courseService.save(title, description);
         return "redirect:/courses";
     }
 
-    @GetMapping("/api/courses")
-    @ResponseBody
-    public List<Course> all() {
-        return repo.findAll();
-    }
+    @PostMapping("/delete")
+    public String delete(
+            @RequestParam Long id,
+            @RequestParam String csrf,
+            HttpSession session
+    ) {
+        if (!CsrfUtil.check(session, csrf)) {
+            return "error";
+        }
 
-    @GetMapping("/api/courses/{id}")
-    @ResponseBody
-    public ResponseEntity<Course> one(@PathVariable Long id) {
-        return repo.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/api/courses/{id}")
-    @ResponseBody
-    public ResponseEntity<Course> update(@PathVariable Long id, @RequestBody Course payload) {
-        return repo.findById(id).map(c -> {
-            c.setTitle(payload.getTitle());
-            c.setDescription(payload.getDescription());
-            c.setTeacherId(payload.getTeacherId());
-            return ResponseEntity.ok(repo.save(c));
-        }).orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/api/courses/search")
-    @ResponseBody
-    public List<Course> search(@RequestParam String title) {
-        return service.searchByTitle(title);
-    }
-
-    @GetMapping("/api/courses/import")
-    @ResponseBody
-    public String importFromUrl(@RequestParam String url) {
-        RestTemplate rt = new RestTemplate();
-        String json = rt.getForObject(url, String.class);
-        log.info("Импортированы данные курсов (raw): {}", json);
-        return "OK";
+        courseService.delete(id);
+        return "redirect:/courses";
     }
 }
