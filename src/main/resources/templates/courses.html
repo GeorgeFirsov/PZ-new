@@ -3,6 +3,19 @@
 <head><meta charset="UTF-8"/><title>Курсы</title></head>
 <body>
 <h3>Курсы</h3>
+
+<div th:if="${session.role == 'TEACHER' or session.role == 'ADMIN'}">
+    <h4>Импорт курсов (только для преподавателей и администраторов)</h4>
+    <form id="importForm">
+        <input type="url" id="importUrl" placeholder="https://example.com/courses.json" required 
+               pattern="https?://.+" style="width: 300px;">
+        <button type="button" onclick="importCourses()">Импортировать</button>
+    </form>
+    <div id="importResult" style="margin-top: 10px;"></div>
+</div>
+
+<p th:if="${error}" th:text="${error}"></p>
+
 <table border="1">
     <tr><th>ID</th><th>Название</th><th>Описание</th><th>TeacherId</th></tr>
     <tr th:each="c: ${courses}">
@@ -12,14 +25,45 @@
         <td th:text="${c.teacherId}"></td>
     </tr>
 </table>
+
 <hr/>
+
 <h4>Добавить курс</h4>
 <form method="post" action="/courses">
-    <input name="title" placeholder="Название"/>
+    <input type="hidden" name="csrf" th:value="${csrf}"/>
+
+    <input name="title" placeholder="Название" required/>
     <input name="description" placeholder="Описание"/>
-    <input name="teacherId" placeholder="teacherId"/>
+    <input name="teacherId" placeholder="teacherId" type="number" required/>
     <button type="submit">Сохранить</button>
 </form>
+
 <p><a href="/">На главную</a></p>
+
+<script>
+function importCourses() {
+    const url = document.getElementById('importUrl').value;
+    const resultDiv = document.getElementById('importResult');
+    
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        resultDiv.innerHTML = '<span style="color: red;">URL должен начинаться с http:// или https://</span>';
+        return;
+    }
+    
+    resultDiv.innerHTML = 'Импорт...';
+    
+    fetch('/api/courses/import?url=' + encodeURIComponent(url))
+        .then(response => response.text())
+        .then(data => {
+            resultDiv.innerHTML = '<span style="color: green;">' + data + '</span>';
+            if (data.includes('успешно')) {
+                setTimeout(() => location.reload(), 2000);
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = '<span style="color: red;">Ошибка: ' + error + '</span>';
+        });
+}
+</script>
 </body>
 </html>

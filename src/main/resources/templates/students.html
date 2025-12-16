@@ -3,6 +3,9 @@
 <head><meta charset="UTF-8"/><title>Студенты</title></head>
 <body>
 <h3>Студенты</h3>
+
+<p th:if="${error}" th:text="${error}"></p>
+
 <table border="1">
     <tr><th>ID</th><th>Имя</th><th>Email</th><th>UserId</th></tr>
     <tr th:each="s: ${students}">
@@ -12,14 +15,19 @@
         <td th:text="${s.userId}"></td>
     </tr>
 </table>
+
 <hr/>
+
 <h4>Добавить студента</h4>
 <form method="post" action="/students">
+    <input type="hidden" name="csrf" th:value="${csrf}"/>
+
     <input name="name" placeholder="Имя"/>
     <input name="email" placeholder="Email"/>
     <input name="userId" placeholder="userId"/>
     <button type="submit">Сохранить</button>
 </form>
+
 <p><a href="/">На главную</a></p>
 </body>
 </html>
