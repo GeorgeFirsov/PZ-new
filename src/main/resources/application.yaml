@@ -6,7 +6,7 @@ spring:
       enabled: true
       path: /h2-console
       settings:
-        web-allow-others: true
+        web-allow-others: false
   datasource:
     url: jdbc:h2:mem:courseapp;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
@@ -16,17 +16,38 @@ spring:
     hibernate:
       ddl-auto: update
     defer-datasource-initialization: true
+  security:
+    filter:
+      order: 10
+
 management:
   endpoints:
     web:
       exposure:
         include: "health,info"
+      base-path: /internal/actuator
   endpoint:
     health:
       show-details: "never"
+    info:
+      enabled: true
+
 server:
   error:
-    include-stacktrace: ALWAYS
+    include-stacktrace: NEVER
+  forward-headers-strategy: framework
+
 app:
   plugin:
     url:
+  security:
+    cors:
+      allowed-origins: "http://localhost:8080"
+    rate-limit:
+      login-attempts: 5
+      lockout-time-minutes: 15
+
+logging:
+  level:
+    ru.mtuci.coursemanagement: INFO
+    org.springframework.security: WARN

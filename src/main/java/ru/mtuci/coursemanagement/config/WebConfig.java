@@ -66,7 +66,7 @@ public class WebConfig implements WebMvcConfigurer {
 
         org.springframework.boot.web.servlet.FilterRegistrationBean<OncePerRequestFilter> reg =
                 new org.springframework.boot.web.servlet.FilterRegistrationBean<>(filter);
-        reg.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        reg.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return reg;
     }
 }

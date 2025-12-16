@@ -45,7 +45,7 @@ public class AuthController {
         Optional<User> opt = users.findByUsername(username);
         if (opt.isPresent()) {
             User u = opt.get();
-            if (u.getPassword().equals(password)) {
+            if (users.checkPassword(password, u.getPassword())) {
                 log.info("User {} logged in", username);
 
                 s.setAttribute("username", username);
@@ -54,6 +54,7 @@ public class AuthController {
             }
         }
 
+        log.warn("Failed login attempt for username: {}", username);
         model.addAttribute("error", "Неверные учетные данные");
         model.addAttribute("csrf", CsrfUtil.getToken(s));
         return "login";
@@ -82,6 +83,7 @@ public class AuthController {
         }
 
         users.save(new User(null, username, password, role));
+        log.info("New user registered: {} with role: {}", username, role);
         return "redirect:/login";
     }
 }
