@@ -17,7 +17,6 @@ import java.util.List;
 
 @Slf4j
 @Controller
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class CourseController {
 
@@ -26,6 +25,9 @@ public class CourseController {
 
     @GetMapping("/courses")
     public String coursesPage(Model model, HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        log.info("COURSES_PAGE_ACCESS: Пользователь {} просматривает список курсов", username);
+        
         model.addAttribute("courses", repo.findAll());
         model.addAttribute("course", new Course());
         model.addAttribute("csrf", CsrfUtil.getToken(session));
@@ -38,7 +40,10 @@ public class CourseController {
                                HttpSession session,
                                Model model) {
 
+        String username = (String) session.getAttribute("username");
+        
         if (!CsrfUtil.check(session, csrf)) {
+            log.warn("CSRF_FAILURE_COURSE: Неверный CSRF токен при создании курса пользователем {}", username);
             model.addAttribute("error", "CSRF токен неверный");
             model.addAttribute("courses", repo.findAll());
             model.addAttribute("course", new Course());
@@ -47,6 +52,7 @@ public class CourseController {
         }
 
         repo.save(c);
+        log.info("COURSE_CREATED: Пользователь {} создал курс: {}", username, c.getTitle());
         return "redirect:/courses";
     }
 
@@ -80,6 +86,7 @@ public class CourseController {
     @GetMapping("/api/courses/search")
     @ResponseBody
     public List<Course> search(@RequestParam String title) {
+        log.info("COURSE_SEARCH: Поиск курсов по названию: {}", title);
         return service.searchByTitle(title);
     }
 
@@ -88,7 +95,7 @@ public class CourseController {
     public String importFromUrl(@RequestParam String url) {
         RestTemplate rt = new RestTemplate();
         String json = rt.getForObject(url, String.class);
-        log.info("Импортированы данные курсов");
+        log.warn("COURSE_IMPORT: Импорт курсов из URL: {}", url);
         return "OK";
     }
 }

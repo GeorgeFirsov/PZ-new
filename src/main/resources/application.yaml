@@ -42,3 +42,16 @@ app:
     rate-limit:
       login-attempts: 5
       lockout-time-minutes: 15
+
+logging:
+  level:
+    ru.mtuci.coursemanagement: INFO
+    ru.mtuci.coursemanagement.service.LoginAttemptService: WARN
+    org.springframework.security: WARN
+  file:
+    name: logs/course-management.log
+    max-size: 100MB
+    max-history: 3000
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

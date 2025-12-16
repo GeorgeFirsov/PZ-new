@@ -3,6 +3,7 @@ package ru.mtuci.coursemanagement.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import ru.mtuci.coursemanagement.util.CsrfUtil;
 
 import java.util.Optional;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class AuthController {
@@ -33,6 +35,7 @@ public class AuthController {
             if (loginAttemptService.isBlocked(username, ipAddress)) {
                 int remainingTime = loginAttemptService.getRemainingLockoutTime(username, ipAddress);
                 model.addAttribute("error", "Аккаунт заблокирован. Попробуйте через " + remainingTime + " минут.");
+                log.warn("BLOCKED_ACCESS: Пользователь {} заблокирован с IP {}", username, ipAddress);
             } else {
                 int remainingAttempts = loginAttemptService.getRemainingAttempts(username, ipAddress);
                 if (remainingAttempts < 3) {
@@ -55,6 +58,7 @@ public class AuthController {
         if (!CsrfUtil.check(s, csrf)) {
             model.addAttribute("error", "CSRF токен неверный");
             model.addAttribute("csrf", CsrfUtil.getToken(s));
+            log.warn("CSRF_FAILURE: Неверный CSRF токен для пользователя {}", username);
             return "login";
         }
 
@@ -64,6 +68,7 @@ public class AuthController {
             int remainingTime = loginAttemptService.getRemainingLockoutTime(username, ipAddress);
             model.addAttribute("error", "Аккаунт заблокирован. Попробуйте через " + remainingTime + " минут.");
             model.addAttribute("csrf", CsrfUtil.getToken(s));
+            log.warn("BLOCKED_ATTEMPT: Попытка входа заблокированного пользователя {} с IP {}", username, ipAddress);
             return "login";
         }
 
@@ -74,6 +79,7 @@ public class AuthController {
                 loginAttemptService.loginSucceeded(username, ipAddress);
                 s.setAttribute("username", username);
                 s.setAttribute("role", u.getRole());
+                log.info("LOGIN_SUCCESS: Пользователь {} вошел в систему с IP {}, роль: {}", username, ipAddress, u.getRole());
                 return "redirect:/";
             }
         }
@@ -88,6 +94,9 @@ public class AuthController {
             model.addAttribute("error", "Аккаунт заблокирован. Попробуйте через " + remainingTime + " минут.");
         }
         
+        log.warn("LOGIN_FAILURE: Неудачная попытка входа для пользователя {} с IP {}. Осталось попыток: {}", 
+                username, ipAddress, remainingAttempts);
+        
         model.addAttribute("csrf", CsrfUtil.getToken(s));
         return "login";
     }
@@ -95,7 +104,11 @@ public class AuthController {
     @GetMapping("/logout")
     public String logout(HttpServletRequest req) {
         HttpSession s = req.getSession(false);
-        if (s != null) s.invalidate();
+        if (s != null) {
+            String username = (String) s.getAttribute("username");
+            s.invalidate();
+            log.info("LOGOUT: Пользователь {} вышел из системы", username);
+        }
         return "redirect:/login";
     }
 
@@ -110,18 +123,21 @@ public class AuthController {
         if (!CsrfUtil.check(s, csrf)) {
             model.addAttribute("error", "CSRF токен неверный");
             model.addAttribute("csrf", CsrfUtil.getToken(s));
+            log.warn("CSRF_FAILURE: Неверный CSRF токен при регистрации пользователя {}", username);
             return "login";
         }
 
         if (username == null || username.trim().isEmpty() || username.length() < 3) {
             model.addAttribute("error", "Логин должен быть не менее 3 символов");
             model.addAttribute("csrf", CsrfUtil.getToken(s));
+            log.warn("REGISTRATION_VALIDATION: Невалидный логин: {}", username);
             return "login";
         }
 
         if (password == null || password.trim().isEmpty() || password.length() < 6) {
             model.addAttribute("error", "Пароль должен быть не менее 6 символов");
             model.addAttribute("csrf", CsrfUtil.getToken(s));
+            log.warn("REGISTRATION_VALIDATION: Невалидный пароль для пользователя {}", username);
             return "login";
         }
 
@@ -129,10 +145,12 @@ public class AuthController {
         if (existingUser.isPresent()) {
             model.addAttribute("error", "Пользователь с таким логином уже существует");
             model.addAttribute("csrf", CsrfUtil.getToken(s));
+            log.warn("REGISTRATION_DUPLICATE: Попытка регистрации существующего пользователя {}", username);
             return "login";
         }
 
         users.save(new User(null, username.trim(), password, "STUDENT"));
+        log.info("REGISTRATION_SUCCESS: Зарегистрирован новый пользователь {}", username);
         return "redirect:/login";
     }
     
