@@ -42,6 +42,13 @@ app:
     rate-limit:
       login-attempts: 5
       lockout-time-minutes: 15
+    ssrf:
+      allowed-protocols: http,https
+      allowed-domains:
+        - "example.com"
+        - "trusted-api.com"
+      timeout-ms: 5000
+      max-redirects: 3
 
 logging:
   level:

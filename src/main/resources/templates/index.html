@@ -21,6 +21,10 @@
         
         | <a href="/logout">Выйти</a>
     </p>
+    
+    <div th:if="${session.role == 'TEACHER' or session.role == 'ADMIN'}">
+        <p><strong>Доступные функции:</strong> создание и импорт курсов</p>
+    </div>
 </div>
 
 <div th:unless="${session.username}">
