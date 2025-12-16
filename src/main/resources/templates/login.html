@@ -1,29 +1,43 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"/><title>Вход</title></head>
+<head>
+    <meta charset="UTF-8">
+    <title>Вход</title>
+    <style>
+        .error { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
 <body>
 <h3>Вход</h3>
 
-<form method="post" action="/login">
-    <input type="hidden" name="csrf" th:value="${csrf}"/>
+<div th:if="${error}">
+    <p class="error" th:text="${error}"></p>
+</div>
 
-    <label>Логин: <input type="text" name="username"/></label><br/>
-    <label>Пароль: <input type="password" name="password"/></label><br/>
+<div th:if="${warning}">
+    <p class="warning" th:text="${warning}"></p>
+</div>
+
+<form method="post" action="/login">
+    <input type="hidden" name="csrf" th:value="${csrf}">
+
+    <label>Логин: <input type="text" name="username" required></label><br>
+    <label>Пароль: <input type="password" name="password" required></label><br>
     <button type="submit">Войти</button>
 </form>
 
-<p th:if="${error}" th:text="${error}"></p>
+<hr>
 
-<hr/>
-
-<h4>Регистрация (демо A04: можно указать роль)</h4>
+<h4>Регистрация</h4>
 <form method="post" action="/register">
-    <input type="hidden" name="csrf" th:value="${csrf}"/>
+    <input type="hidden" name="csrf" th:value="${csrf}">
 
-    <input name="username" placeholder="username"/>
-    <input name="password" placeholder="password"/>
-    <input name="role" placeholder="role (STUDENT/TEACHER)"/>
+    <input name="username" placeholder="логин" required>
+    <input name="password" placeholder="пароль" required>
     <button type="submit">Зарегистрироваться</button>
 </form>
+
+<p><a href="/">На главную</a></p>
 </body>
 </html>

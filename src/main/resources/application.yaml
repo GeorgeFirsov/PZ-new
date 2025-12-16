@@ -38,16 +38,7 @@ server:
   forward-headers-strategy: framework
 
 app:
-  plugin:
-    url:
   security:
-    cors:
-      allowed-origins: "http://localhost:8080"
     rate-limit:
       login-attempts: 5
       lockout-time-minutes: 15
-
-logging:
-  level:
-    ru.mtuci.coursemanagement: INFO
-    org.springframework.security: WARN
