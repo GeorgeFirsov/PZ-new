@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Управление пользователями</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+<h3>Управление пользователями</h3>
+
+<p><a href="/">На главную</a></p>
+
+<div th:if="${error}">
+    <p style="color: red" th:text="${error}"></p>
+</div>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Логин</th>
+        <th>Роль</th>
+        <th>Действия</th>
+    </tr>
+    <tr th:each="user : ${users}">
+        <td th:text="${user.id}"></td>
+        <td th:text="${user.username}"></td>
+        <td th:text="${user.role}"></td>
+        <td>
+            <form method="post" action="/admin/users/change-role" style="display: inline;">
+                <input type="hidden" name="csrf" th:value="${csrf}">
+                <input type="hidden" name="userId" th:value="${user.id}">
+                <select name="newRole">
+                    <option value="STUDENT" th:selected="${user.role == 'STUDENT'}">STUDENT</option>
+                    <option value="TEACHER" th:selected="${user.role == 'TEACHER'}">TEACHER</option>
+                    <option value="ADMIN" th:selected="${user.role == 'ADMIN'}">ADMIN</option>
+                </select>
+                <button type="submit">Изменить</button>
+            </form>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

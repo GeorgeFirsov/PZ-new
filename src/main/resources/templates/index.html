@@ -6,11 +6,27 @@
 </head>
 <body>
 <h2>Course Management</h2>
-<p>
-    <a href="/login">Войти</a> |
-    <a href="/students">Студенты</a> |
-    <a href="/courses">Курсы</a>
-</p>
-<p>Демо-пользователи: <b>teacher/password</b>, <b>student/password</b></p>
+
+<div th:if="${session.username}">
+    <p>Вы вошли как: <span th:text="${session.username}"></span> 
+    (<span th:text="${session.role}"></span>)</p>
+    
+    <p>
+        <a href="/students">Студенты</a> |
+        <a href="/courses">Курсы</a>
+        
+        <span th:if="${session.role == 'ADMIN'}">
+            | <a href="/admin/users">Управление пользователями</a>
+        </span>
+        
+        | <a href="/logout">Выйти</a>
+    </p>
+</div>
+
+<div th:unless="${session.username}">
+    <p><a href="/login">Войти</a> | <a href="/login">Зарегистрироваться</a></p>
+</div>
+
+<p>Тестовые пользователи: admin/Admin123!, teacher/Teacher123!, student/Student123!</p>
 </body>
 </html>

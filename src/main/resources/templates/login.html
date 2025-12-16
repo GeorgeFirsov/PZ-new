@@ -22,8 +22,8 @@
 <form method="post" action="/login">
     <input type="hidden" name="csrf" th:value="${csrf}">
 
-    <label>Логин: <input type="text" name="username" required></label><br>
-    <label>Пароль: <input type="password" name="password" required></label><br>
+    <label>Логин: <input type="text" name="username" required minlength="3"></label><br>
+    <label>Пароль: <input type="password" name="password" required minlength="6"></label><br>
     <button type="submit">Войти</button>
 </form>
 
@@ -33,8 +33,8 @@
 <form method="post" action="/register">
     <input type="hidden" name="csrf" th:value="${csrf}">
 
-    <input name="username" placeholder="логин" required>
-    <input name="password" placeholder="пароль" required>
+    <input name="username" placeholder="логин (мин. 3 символа)" required minlength="3">
+    <input name="password" placeholder="пароль (мин. 6 символов)" required minlength="6">
     <button type="submit">Зарегистрироваться</button>
 </form>
 

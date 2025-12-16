@@ -113,7 +113,26 @@ public class AuthController {
             return "login";
         }
 
-        users.save(new User(null, username, password, "STUDENT"));
+        if (username == null || username.trim().isEmpty() || username.length() < 3) {
+            model.addAttribute("error", "Логин должен быть не менее 3 символов");
+            model.addAttribute("csrf", CsrfUtil.getToken(s));
+            return "login";
+        }
+
+        if (password == null || password.trim().isEmpty() || password.length() < 6) {
+            model.addAttribute("error", "Пароль должен быть не менее 6 символов");
+            model.addAttribute("csrf", CsrfUtil.getToken(s));
+            return "login";
+        }
+
+        Optional<User> existingUser = users.findByUsername(username);
+        if (existingUser.isPresent()) {
+            model.addAttribute("error", "Пользователь с таким логином уже существует");
+            model.addAttribute("csrf", CsrfUtil.getToken(s));
+            return "login";
+        }
+
+        users.save(new User(null, username.trim(), password, "STUDENT"));
         return "redirect:/login";
     }
     
