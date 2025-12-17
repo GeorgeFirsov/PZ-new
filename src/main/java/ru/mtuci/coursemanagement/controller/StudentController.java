@@ -2,39 +2,53 @@ package ru.mtuci.coursemanagement.controller;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import ru.mtuci.coursemanagement.model.Student;
 import ru.mtuci.coursemanagement.repository.StudentRepository;
+import ru.mtuci.coursemanagement.util.CsrfUtil;
 
 import java.util.List;
 
+@Slf4j
 @Controller
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class StudentController {
     private final StudentRepository repo;
 
     @GetMapping("/students")
-    public String studentsPage(Model model) {
+    public String studentsPage(Model model, HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        log.info("STUDENTS_PAGE_ACCESS: Пользователь {} просматривает список студентов", username);
+        
         model.addAttribute("students", repo.findAll());
         model.addAttribute("student", new Student());
+        model.addAttribute("csrf", CsrfUtil.getToken(session));
         return "students";
     }
 
     @PostMapping("/students")
-    public String createStudent(@ModelAttribute Student st) {
+    public String createStudent(@ModelAttribute Student st,
+                                @RequestParam String csrf,
+                                HttpSession session,
+                                Model model) {
+
+        String username = (String) session.getAttribute("username");
+        
+        if (!CsrfUtil.check(session, csrf)) {
+            log.warn("CSRF_FAILURE_STUDENT: Неверный CSRF токен при создании студента пользователем {}", username);
+            model.addAttribute("error", "CSRF токен неверный");
+            model.addAttribute("students", repo.findAll());
+            model.addAttribute("student", new Student());
+            model.addAttribute("csrf", CsrfUtil.getToken(session));
+            return "students";
+        }
+
         repo.save(st);
+        log.info("STUDENT_CREATED: Пользователь {} создал студента: {}", username, st.getName());
         return "redirect:/students";
     }
 

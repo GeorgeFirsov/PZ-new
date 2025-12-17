@@ -6,7 +6,7 @@ spring:
       enabled: true
       path: /h2-console
       settings:
-        web-allow-others: true
+        web-allow-others: false
   datasource:
     url: jdbc:h2:mem:courseapp;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
@@ -16,14 +16,49 @@ spring:
     hibernate:
       ddl-auto: update
     defer-datasource-initialization: true
+  security:
+    filter:
+      order: 10
+
 management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: "health,info"
+      base-path: /internal/actuator
+  endpoint:
+    health:
+      show-details: "never"
+    info:
+      enabled: true
+
 server:
   error:
-    include-stacktrace: ALWAYS
+    include-stacktrace: NEVER
+  forward-headers-strategy: framework
+
 app:
-  plugin:
-    url:
+  security:
+    rate-limit:
+      login-attempts: 5
+      lockout-time-minutes: 15
+    ssrf:
+      allowed-protocols: http,https
+      allowed-domains:
+        - "example.com"
+        - "trusted-api.com"
+      timeout-ms: 5000
+      max-redirects: 3
+
+logging:
+  level:
+    ru.mtuci.coursemanagement: INFO
+    ru.mtuci.coursemanagement.service.LoginAttemptService: WARN
+    org.springframework.security: WARN
+  file:
+    name: logs/course-management.log
+    max-size: 100MB
+    max-history: 3000
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
