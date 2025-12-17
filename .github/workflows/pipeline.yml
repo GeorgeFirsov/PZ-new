@@ -36,17 +36,21 @@ jobs:
         run: |
           java -jar target/*.jar &
           echo "Waiting for app to start..."
-          sleep 20
+          sleep 30
       
-      - name: Install ffuf
-        run: sudo apt-get update && sudo apt-get install -y ffuf
+      - name: Install ffuf and wordlist
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffuf wget
+          # Скачиваем базовый словарь
+          wget -q https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt -O common.txt
       
       - name: Run directory fuzzing
         continue-on-error: true
         run: |
           echo "Running fuzzing test..."
           ffuf -u "http://localhost:8080/FUZZ" \
-            -w /usr/share/dict/words \
+            -w common.txt \
             -mc 200,204,301,302,403 \
             -t 20 \
             -timeout 3 \
@@ -56,8 +60,9 @@ jobs:
       - name: Check results
         run: |
           if [ -f ffuf-report.json ]; then
-            echo "Fuzzing completed. Results:"
-            cat ffuf-report.json | jq '.results | length' || echo "No JSON results"
+            echo "Fuzzing completed successfully"
+            RESULTS_COUNT=$(cat ffuf-report.json | jq '.results | length' 2>/dev/null || echo "0")
+            echo "Found $RESULTS_COUNT endpoints"
           else
             echo "No fuzzing report generated"
           fi
@@ -67,4 +72,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fuzzing-report
-          path: ffuf-report.json
+          path: |
+            ffuf-report.json
+            common.txt
